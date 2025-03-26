@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Act 11 - Managing Products using Firebase in Flutter',
+      title: 'Act 11 - Firebase Products',
       home: HomePage(),
     );
   }
@@ -32,9 +32,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _counter = 0;
-
-  // text fields' controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
@@ -46,28 +43,13 @@ class _HomePageState extends State<HomePage> {
   double? _minPrice;
   double? _maxPrice;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  // Add this method to handle search and filter
   Stream<QuerySnapshot> _getFilteredProducts() {
     Query query = _products;
     
     if (_searchQuery.isNotEmpty) {
-      // Convert search query to lowercase for case-insensitive search
-      String searchLower = _searchQuery.toLowerCase();
-      // Get all products where name contains the search query
       query = query.orderBy('name')
-                   .where('name', isGreaterThanOrEqualTo: searchLower)
-                   .where('name', isLessThanOrEqualTo: searchLower + '\uf8ff');
+                   .where('name', isGreaterThanOrEqualTo: _searchQuery)
+                   .where('name', isLessThanOrEqualTo: _searchQuery + '\uf8ff');
     }
     
     if (_minPrice != null) {
@@ -81,7 +63,6 @@ class _HomePageState extends State<HomePage> {
     return query.snapshots();
   }
 
-  // Add this method to handle filter application
   void _applyFilter() {
     setState(() {
       _minPrice = double.tryParse(_minPriceController.text);
@@ -89,7 +70,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Add this method to reset filters
   void _resetFilter() {
     setState(() {
       _minPrice = null;
@@ -99,7 +79,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Create or Update Product
   Future<void> _createOrUpdate([DocumentSnapshot? documentSnapshot]) async {
     String action = 'create';
     if (documentSnapshot != null) {
@@ -130,7 +109,9 @@ class _HomePageState extends State<HomePage> {
               TextField(
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 controller: _priceController,
-                decoration: const InputDecoration(labelText: 'Price'),
+                decoration: const InputDecoration(
+                  labelText: 'Price',
+                ),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
@@ -138,23 +119,18 @@ class _HomePageState extends State<HomePage> {
                 onPressed: () async {
                   final String name = _nameController.text;
                   final double price = double.parse(_priceController.text);
-                  
                   if (name.isNotEmpty && price != null) {
                     if (action == 'create') {
-                      // Persist a new product to Firestore
                       await _products.add({
-                        "name": name.toLowerCase(),
+                        "name": name,
                         "price": price,
-                        "displayName": name,
                         "createdAt": FieldValue.serverTimestamp(),
                       });
                     }
                     if (action == 'update') {
-                      // Update the product
                       await _products.doc(documentSnapshot!.id).update({
-                        "name": name.toLowerCase(),
+                        "name": name,
                         "price": price,
-                        "displayName": name,
                         "updatedAt": FieldValue.serverTimestamp(),
                       });
                     }
@@ -171,7 +147,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Deleting a product by id
   Future<void> _deleteProduct(String productId) async {
     try {
       await _products.doc(productId).delete();
@@ -192,19 +167,21 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Act 11 - Firebase Products'),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Act 11'),
+            Text(
+              'Managing Products using Firebase in Flutter',
+              style: TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -221,8 +198,6 @@ class _HomePageState extends State<HomePage> {
               },
             ),
           ),
-          
-          // Price Filter
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -261,8 +236,6 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          
-          // Product List
           Expanded(
             child: StreamBuilder(
               stream: _getFilteredProducts(),
@@ -273,7 +246,6 @@ class _HomePageState extends State<HomePage> {
                       child: Text('No products found'),
                     );
                   }
-                  
                   return ListView.builder(
                     itemCount: streamSnapshot.data!.docs.length,
                     itemBuilder: (context, index) {
@@ -294,9 +266,9 @@ class _HomePageState extends State<HomePage> {
                                 IconButton(
                                   icon: const Icon(Icons.delete),
                                   onPressed: () => _deleteProduct(documentSnapshot.id),
-            ),
-          ],
-        ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -314,7 +286,7 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _createOrUpdate(),
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
 }
